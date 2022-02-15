@@ -34,8 +34,6 @@ fn pong(mut connection_query: Query<&mut ReceiveQueue, With<ConnectionMarker>>) 
 ### Pong
 
 ```rust
-const PONG_ADDR: &str = "127.0.0.1:8001";
-
 fn setup(mut commands: Commands) {
     let addr: SocketAddr = PONG_ADDR.parse().unwrap();
     let socket_bundle = bind(addr, Duration::from_millis(10)).unwrap();
