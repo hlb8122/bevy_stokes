@@ -1,6 +1,6 @@
 # bevy_stokes
 
-A [bevy](https://github.com/bevyengine/bevy/) plugin providing a thin and easy to use wrapper around 
+A [bevy](https://github.com/bevyengine/bevy/) plugin providing a thin and ergonomic wrapper around 
 [laminar](https://github.com/TimonPost/laminar).
 
 ## Example

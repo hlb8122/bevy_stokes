@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-//! A [bevy](https://github.com/bevyengine/bevy/) plugin providing a thin and easy to use wrapper
+//! A [bevy](https://github.com/bevyengine/bevy/) plugin providing a thin and ergonomic wrapper
 //! around [laminar](https://github.com/TimonPost/laminar).
 //!
 //! Both sockets and their connections are represented by entities and distinguished by

@@ -1,7 +1,17 @@
 [package]
 name = "bevy_stokes"
 version = "0.1.0-alpha.0"
+authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2021"
+keywords = ["graylog", "logging", "tracing", "tcp", "udp"]
+homepage = "https://github.com/hlb8122/bevy_stokes"
+repository = "https://github.com/hlb8122/bevy_stokes"
+description = """
+A [bevy](https://github.com/bevyengine/bevy/) plugin providing a thin and ergonomic wrapper around 
+[laminar](https://github.com/TimonPost/laminar).
+"""
+license = "MIT"
+categories = ["development-tools"]
 
 [dependencies]
 bevy = "0.6"
