@@ -8,14 +8,14 @@ use laminar::Packet;
 pub struct SocketMarker;
 
 #[derive(Debug, Component)]
-pub(crate) struct Socket(pub laminar::Socket);
+pub(crate) struct Socket(pub(crate) laminar::Socket);
 
 /// A [`Component`] representing the minimum interval between socket polls.
 #[derive(Debug, Default, Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct PollInterval(pub Duration);
 
 #[derive(Debug, Default, Clone, Copy, Component, PartialEq, Eq, Hash)]
-pub(crate) struct LastPoll(pub Option<Instant>);
+pub(crate) struct LastPoll(pub(crate) Option<Instant>);
 
 /// A [`Component`] storing all packets to be sent to a peer.
 #[derive(Debug, Default, Clone, Component, PartialEq, Eq)]
@@ -30,11 +30,11 @@ impl SendQueue {
 
 #[derive(Bundle)]
 pub(crate) struct SocketBundle {
-    pub marker: SocketMarker,
-    pub socket: Socket,
-    pub last_poll: LastPoll,
-    pub poll_interval: PollInterval,
-    pub send_queue: SendQueue,
+    pub(crate) marker: SocketMarker,
+    pub(crate) socket: Socket,
+    pub(crate) last_poll: LastPoll,
+    pub(crate) poll_interval: PollInterval,
+    pub(crate) send_queue: SendQueue,
 }
 
 pub(crate) fn socket_poll(

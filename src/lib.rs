@@ -1,4 +1,10 @@
-#![deny(missing_docs)]
+#![deny(
+    missing_docs,
+    missing_debug_implementations,
+    single_use_lifetimes,
+    unreachable_pub
+)]
+#![forbid(unsafe_code)]
 
 //! A [bevy](https://github.com/bevyengine/bevy/) plugin providing a thin and ergonomic wrapper
 //! around [laminar](https://github.com/TimonPost/laminar).
@@ -171,14 +177,20 @@ where
 
 /// A [`Plugin`] encapsulating the networking systems.
 pub struct NetworkPlugin {
-    system_set_new: Box<dyn Fn() -> SystemSet + Send + Sync + 'static>,
+    system_set_f: Box<dyn Fn() -> SystemSet + Send + Sync + 'static>,
+}
+
+impl Debug for NetworkPlugin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NetworkPlugin").finish_non_exhaustive()
+    }
 }
 
 impl NetworkPlugin {
     /// The plugin will always run.
     pub fn always() -> Self {
         Self {
-            system_set_new: Box::new(SystemSet::new),
+            system_set_f: Box::new(SystemSet::new),
         }
     }
 
@@ -189,7 +201,7 @@ impl NetworkPlugin {
         State: Clone + Eq + Hash + Debug,
     {
         Self {
-            system_set_new: Box::new(move || SystemSet::on_update(state.clone())),
+            system_set_f: Box::new(move || SystemSet::on_update(state.clone())),
         }
     }
 }
@@ -216,14 +228,14 @@ impl SystemLabel for NetworkSystemLabels {
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        let polling_set = (self.system_set_new)()
+        let polling_set = (self.system_set_f)()
             .label(NetworkSystemLabels::Poll)
             .with_system(socket_poll);
-        let recv_set = (self.system_set_new)()
+        let recv_set = (self.system_set_f)()
             .label(NetworkSystemLabels::Recv)
             .after(NetworkSystemLabels::Poll)
             .with_system(drain_recv);
-        let send_set = (self.system_set_new)()
+        let send_set = (self.system_set_f)()
             .label(NetworkSystemLabels::Send)
             .after(NetworkSystemLabels::Recv)
             .with_system(flush_send);

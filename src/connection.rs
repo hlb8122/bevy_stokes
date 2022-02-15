@@ -4,19 +4,19 @@ use bevy::prelude::*;
 use laminar::Packet;
 
 /// A marker [`Component`] for the connection entity.
-#[derive(Component)]
+#[derive(Debug, Default, Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct ConnectionMarker;
 
 /// A [`Component`] storing the peers [`SocketAddr`] within a connection.
-#[derive(Component)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct ConnectionAddress(pub SocketAddr);
 
 /// A [`Component`] used to relate connections with their socket.
-#[derive(Component)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct SocketId(pub Entity);
 
 /// A [`Component`] storing all packets received from a peer.
-#[derive(Component)]
+#[derive(Debug, Default, Clone, Component, PartialEq, Eq)]
 pub struct ReceiveQueue(pub(crate) VecDeque<Packet>);
 
 impl ReceiveQueue {
@@ -43,10 +43,10 @@ impl ReceiveQueue {
 
 #[derive(Bundle)]
 pub(crate) struct ConnectionBundle {
-    pub marker: ConnectionMarker,
-    pub socket_id: SocketId,
-    pub address: ConnectionAddress,
-    pub queue: ReceiveQueue,
+    pub(crate) marker: ConnectionMarker,
+    pub(crate) socket_id: SocketId,
+    pub(crate) address: ConnectionAddress,
+    pub(crate) queue: ReceiveQueue,
 }
 
 pub(crate) fn spawn_connection(
