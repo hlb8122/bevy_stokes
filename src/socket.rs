@@ -3,7 +3,11 @@ use std::time::{Duration, Instant};
 use bevy::prelude::*;
 use laminar::Packet;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// A marker [`Component`] for the socket entity.
+#[cfg_attr(features = "serde", Serialize, Deserialize)]
 #[derive(Debug, Default, Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct SocketMarker;
 
@@ -11,6 +15,7 @@ pub struct SocketMarker;
 pub(crate) struct Socket(pub(crate) laminar::Socket);
 
 /// A [`Component`] representing the minimum interval between socket polls.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Default, Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct PollInterval(pub Duration);
 

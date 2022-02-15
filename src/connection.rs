@@ -3,15 +3,21 @@ use std::{collections::VecDeque, net::SocketAddr};
 use bevy::prelude::*;
 use laminar::Packet;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// A marker [`Component`] for the connection entity.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Default, Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct ConnectionMarker;
 
 /// A [`Component`] storing the peers [`SocketAddr`] within a connection.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct ConnectionAddress(pub SocketAddr);
 
 /// A [`Component`] used to relate connections with their socket.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq, Hash)]
 pub struct SocketId(pub Entity);
 
