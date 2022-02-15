@@ -3,6 +3,11 @@
 A [bevy](https://github.com/bevyengine/bevy/) plugin providing a thin and ergonomic wrapper around 
 [laminar](https://github.com/TimonPost/laminar).
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Cargo](https://img.shields.io/crates/v/bevy_stokes.svg)](https://crates.io/crates/bevy_stokes)
+[![Documentation](https://docs.rs/bevy_stokes/badge.svg)](
+https://docs.rs/bevy_stokes)
+
 ## Example
 
 
