@@ -1,6 +1,10 @@
-use std::time::{Duration, Instant};
+use std::{
+    fmt::Debug,
+    net::SocketAddr,
+    time::{Duration, Instant},
+};
 
-use bevy::prelude::*;
+use bevy::{ecs::system::EntityCommands, prelude::*};
 use laminar::Packet;
 
 #[cfg(feature = "serde")]
@@ -30,6 +34,41 @@ impl SendQueue {
     /// Sends a [`Packet`] to a peer.
     pub fn send(&mut self, packet: Packet) {
         self.0.push(packet)
+    }
+}
+
+/// A [`Component`] whose presence on a socket entity causes a modification to new connections.
+#[derive(Component)]
+pub struct ConnectionBuilder(
+    pub(crate) Box<dyn Fn(SocketAddr, &mut EntityCommands) + Send + Sync + 'static>,
+);
+
+impl ConnectionBuilder {
+    /// Creates a new [`ConnectionBuilder`] from a closure. This closure is run against the
+    /// [`ConnectionAddress`] and [`EntityCommands`] of new connections.
+    pub fn new<F>(f: F) -> Self
+    where
+        F: Fn(SocketAddr, &mut EntityCommands) + Send + Sync + 'static,
+    {
+        Self(Box::new(f))
+    }
+
+    /// Creates a new [`ConnectionBuilder`] which adjoins a component onto new connections.
+    pub fn adjoin_component<C>(component: C) -> Self
+    where
+        C: Component + Clone,
+    {
+        Self(Box::new(move |_, commands| {
+            commands.insert(component.clone());
+        }))
+    }
+}
+
+impl Debug for ConnectionBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("MarkNewConnection")
+            .field(&format_args!("_"))
+            .finish()
     }
 }
 

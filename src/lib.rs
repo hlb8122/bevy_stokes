@@ -66,7 +66,7 @@ fn flush_send(mut query: Query<(&mut Socket, &mut SendQueue)>) {
 }
 
 fn drain_recv(
-    mut socket_query: Query<(Entity, &mut Socket), With<SocketMarker>>,
+    mut socket_query: Query<(Entity, &mut Socket, Option<&ConnectionBuilder>), With<SocketMarker>>,
     mut connection_query: Query<
         (Entity, &SocketId, &ConnectionAddress, &mut ReceiveQueue),
         With<ConnectionMarker>,
@@ -74,7 +74,7 @@ fn drain_recv(
 
     mut commands: Commands,
 ) {
-    for (socket_id, mut socket) in socket_query.iter_mut() {
+    for (socket_id, mut socket, builder_opt) in socket_query.iter_mut() {
         // Use these to avoid duplicate spawns/despawns
         let mut spawned = Vec::new();
         let mut despawned = Vec::new();
@@ -89,7 +89,13 @@ fn drain_recv(
 
                     if conn_opt.is_none() && !spawned.contains(&connect_address) {
                         spawned.push(connect_address);
-                        spawn_connection(socket_id, connect_address, None, &mut commands);
+                        spawn_connection(
+                            socket_id,
+                            connect_address,
+                            None,
+                            &mut commands,
+                            builder_opt,
+                        );
                     }
                 }
                 SocketEvent::Disconnect(disconnect_address) => {
@@ -117,7 +123,13 @@ fn drain_recv(
                         message_queue.0.push_front(packet);
                     } else if !spawned.contains(&packet_addr) {
                         spawned.push(packet_addr);
-                        spawn_connection(socket_id, packet_addr, Some(packet), &mut commands);
+                        spawn_connection(
+                            socket_id,
+                            packet_addr,
+                            Some(packet),
+                            &mut commands,
+                            builder_opt,
+                        );
                     }
                 }
                 SocketEvent::Timeout(timeout_address) => {
