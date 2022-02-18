@@ -6,8 +6,6 @@ use laminar::Packet;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::ConnectionBuilder;
-
 /// A marker [`Component`] for the connection entity.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Default, Clone, Copy, Component, PartialEq, Eq, Hash)]
@@ -47,37 +45,4 @@ impl ReceiveQueue {
     pub fn drain(&mut self) -> impl Iterator<Item = Packet> + '_ {
         self.0.drain(..)
     }
-}
-
-#[derive(Bundle)]
-pub(crate) struct ConnectionBundle {
-    pub(crate) marker: ConnectionMarker,
-    pub(crate) socket_id: SocketId,
-    pub(crate) address: ConnectionAddress,
-    pub(crate) queue: ReceiveQueue,
-}
-
-pub(crate) fn spawn_connection(
-    socket_id: Entity,
-    address: SocketAddr,
-    first_message: Option<Packet>,
-    commands: &mut Commands,
-    builder_opt: Option<&ConnectionBuilder>,
-) -> Entity {
-    trace!(message = "spawning connection", %address);
-
-    let queue = first_message
-        .map(|packet| VecDeque::from([packet]))
-        .unwrap_or_default();
-
-    let mut entity_commands = commands.spawn_bundle(ConnectionBundle {
-        marker: ConnectionMarker,
-        socket_id: SocketId(socket_id),
-        address: ConnectionAddress(address),
-        queue: ReceiveQueue(queue),
-    });
-    if let Some(builder) = builder_opt {
-        builder.0(address, &mut entity_commands)
-    }
-    entity_commands.id()
 }

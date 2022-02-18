@@ -27,6 +27,7 @@ mod connection;
 mod socket;
 
 use std::{
+    collections::{hash_map::Entry, HashMap, VecDeque},
     fmt::Debug,
     hash::Hash,
     net::{SocketAddr, ToSocketAddrs},
@@ -40,21 +41,6 @@ use laminar::SocketEvent;
 pub use laminar::{Config, Packet};
 pub use socket::*;
 
-#[inline]
-fn find_connection<'a>(
-    socket_id: Entity,
-    connection_address: SocketAddr,
-    connection_query: &'a mut Query<
-        (Entity, &SocketId, &ConnectionAddress, &mut ReceiveQueue),
-        With<ConnectionMarker>,
-    >,
-) -> Option<(Entity, Mut<'a, ReceiveQueue>)> {
-    connection_query
-        .iter_mut()
-        .find(|(_, id, addr, _)| id.0 == socket_id && addr.0 == connection_address)
-        .map(|(id, _, _, queue)| (id, queue))
-}
-
 fn flush_send(mut query: Query<(&mut Socket, &mut SendQueue)>) {
     for (mut socket, mut queue) in query.iter_mut() {
         for packet in queue.0.drain(..) {
@@ -65,85 +51,118 @@ fn flush_send(mut query: Query<(&mut Socket, &mut SendQueue)>) {
     }
 }
 
+/// Represents the current state of a connection.
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq, Hash)]
+pub enum ConnectionState {
+    /// Connection has been sent and received over.
+    Connected,
+    /// Connection has received a message.
+    Pending,
+    /// Connection has been disconnected.
+    Disconnected,
+}
+
+struct Action {
+    state: Option<ConnectionState>,
+    packets: VecDeque<Packet>,
+}
+
+#[derive(Bundle)]
+struct ConnectionBundle {
+    marker: ConnectionMarker,
+    socket_id: SocketId,
+    address: ConnectionAddress,
+    queue: ReceiveQueue,
+    state: ConnectionState,
+}
+
 fn drain_recv(
     mut socket_query: Query<(Entity, &mut Socket, Option<&ConnectionBuilder>), With<SocketMarker>>,
     mut connection_query: Query<
-        (Entity, &SocketId, &ConnectionAddress, &mut ReceiveQueue),
+        (
+            Entity,
+            &SocketId,
+            &ConnectionAddress,
+            &mut ReceiveQueue,
+            &mut ConnectionState,
+        ),
         With<ConnectionMarker>,
     >,
 
     mut commands: Commands,
 ) {
     for (socket_id, mut socket, builder_opt) in socket_query.iter_mut() {
-        // Use these to avoid duplicate spawns/despawns
-        let mut spawned = Vec::new();
-        let mut despawned = Vec::new();
+        let mut actions: HashMap<SocketAddr, Action> = HashMap::new();
 
         while let Some(event) = socket.0.recv() {
             match event {
                 SocketEvent::Connect(connect_address) => {
                     trace!(message = "connect event", address = %connect_address);
 
-                    let conn_opt =
-                        find_connection(socket_id, connect_address, &mut connection_query);
-
-                    if conn_opt.is_none() && !spawned.contains(&connect_address) {
-                        spawned.push(connect_address);
-                        spawn_connection(
-                            socket_id,
-                            connect_address,
-                            None,
-                            &mut commands,
-                            builder_opt,
-                        );
-                    }
+                    actions
+                        .entry(connect_address)
+                        .and_modify(|action| action.state = Some(ConnectionState::Connected))
+                        .or_insert(Action {
+                            state: Some(ConnectionState::Connected),
+                            packets: VecDeque::new(),
+                        });
                 }
                 SocketEvent::Disconnect(disconnect_address) => {
                     trace!(message = "disconnect event", address = %disconnect_address);
 
-                    let connection_opt =
-                        find_connection(socket_id, disconnect_address, &mut connection_query);
-
-                    if let Some((id, _)) = connection_opt {
-                        if !despawned.contains(&disconnect_address) {
-                            despawned.push(disconnect_address);
-                            commands.entity(id).despawn();
-                        }
-                    }
+                    actions
+                        .entry(disconnect_address)
+                        .and_modify(|action| action.state = Some(ConnectionState::Disconnected))
+                        .or_insert(Action {
+                            state: Some(ConnectionState::Disconnected),
+                            packets: VecDeque::new(),
+                        });
                 }
                 SocketEvent::Packet(packet) => {
                     let packet_addr = packet.addr();
 
                     trace!(message = "packet event", address = %packet_addr);
 
-                    let connection_opt =
-                        find_connection(socket_id, packet_addr, &mut connection_query);
-
-                    if let Some((_, mut message_queue)) = connection_opt {
-                        message_queue.0.push_front(packet);
-                    } else if !spawned.contains(&packet_addr) {
-                        spawned.push(packet_addr);
-                        spawn_connection(
-                            socket_id,
-                            packet_addr,
-                            Some(packet),
-                            &mut commands,
-                            builder_opt,
-                        );
+                    match actions.entry(packet_addr) {
+                        Entry::Occupied(mut action) => {
+                            action.get_mut().packets.push_back(packet);
+                        }
+                        Entry::Vacant(empty) => {
+                            empty.insert(Action {
+                                state: None,
+                                packets: [packet].into(),
+                            });
+                        }
                     }
                 }
                 SocketEvent::Timeout(timeout_address) => {
                     trace!(message = "timeout event", address = %timeout_address);
+                }
+            }
+        }
 
-                    let connection_opt =
-                        find_connection(socket_id, timeout_address, &mut connection_query);
+        for (connection_addr, action) in actions.into_iter() {
+            let result = connection_query
+                .iter_mut()
+                .find(|(_, id, addr, _, _)| id.0 == socket_id && addr.0 == connection_addr);
 
-                    if let Some((id, _)) = connection_opt {
-                        if !despawned.contains(&timeout_address) {
-                            despawned.push(timeout_address);
-                            commands.entity(id).despawn();
-                        }
-                    }
+            if let Some((_, _, _, mut queue, mut state)) = result {
+                queue.0.extend(action.packets);
+                if let Some(new_state) = action.state {
+                    *state = new_state;
+                }
+            } else {
+                trace!(message = "spawning connection", address = %connection_addr);
+
+                let mut entity_commands = commands.spawn_bundle(ConnectionBundle {
+                    marker: ConnectionMarker,
+                    socket_id: SocketId(socket_id),
+                    address: ConnectionAddress(connection_addr),
+                    queue: ReceiveQueue(action.packets),
+                    state: action.state.unwrap_or(ConnectionState::Pending),
+                });
+                if let Some(builder) = builder_opt {
+                    builder.0(connection_addr, &mut entity_commands)
                 }
             }
         }
