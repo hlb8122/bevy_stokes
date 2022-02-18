@@ -1,6 +1,6 @@
 [package]
 name = "bevy_stokes"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2021"
 keywords = ["bevy", "udp", "networking"]
@@ -13,6 +13,7 @@ license = "MIT"
 categories = ["game-development", "network-programming"]
 
 [dependencies]
-bevy = "0.6"
-laminar = "0.5"
+bevy = "0.6.1"
+laminar = "0.5.0"
+
 serde = { version = "1.0", optional = true, default-features = false }
